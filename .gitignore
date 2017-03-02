@@ -18,3 +18,6 @@ Thumbs.db
 # Snakemake generated files #
 .snakemake/
 scripts/illumina/db/*fa.*
+
+# Python compiles
+*.pyc
