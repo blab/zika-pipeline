@@ -39,7 +39,22 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
     '''
     Use nanopolish to construct a single fasta for all reads from a sample
     '''
-
+    runs = set()
+    for sample in sr_mapping:
+        for (run, barcode) in sr_mapping[sample]:
+            runs.add(run)
+    for r in runs:
+        fail_folder = data_dir + run + "/basecalled_reads/fail/"
+        demultiplex_file = '/build/'+run+'_fail_demultiplex.fasta'
+        print("demultiplex_file: "+demultiplex_file)
+        f = open(demultiplex_file, "w+")
+        call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
+        print(" ".join(call))
+        subprocess.call(call,stdout=f)
+        f.close()
+        call = [ 'barcodes/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
+        print(" ".join(call))
+        subprocess.call(call)
     # Pass reads
     for sample in sr_mapping:
         print("* Extracting " + sample)
@@ -51,18 +66,6 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
             call = ['nanopolish', 'extract', '--type', '2d', input_dir]
             print(" ".join(call) + " > " + output_file)
             subprocess.call(call, stdout=f)
-            #Fail reads
-            fail_folder = data_dir + run + "/basecalled_reads/fail/"
-            demultiplex_file = '/build/'+run+'_fail_demultiplex.fasta'
-            print("demultiplex_file: "+demultiplex_file)
-            f = open(demultiplex_file, "w+")
-            call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
-            print(" ".join(call))
-            subprocess.call(call,stdout=f)
-            f.close()
-            call = [ 'scripts/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
-            print(" ".join(call))
-            subprocess.call(call)
         # concatenate to single sample fasta
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             for (run, barcode) in sr_mapping[sample]]
@@ -135,15 +138,14 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     # sort samples
     partial_samples.sort()
     good_samples.sort()
+    poor_samples.sort()
     print("Good samples: " + " ".join(good_samples))
     # concatenate partial samples
     print("Partial samples: " + " ".join(partial_samples))
     input_file_list = [build_dir + sample + ".consensus.fasta" for sample in partial_samples]
-    print("INPUTFILELIST: "+" ".join(input_file_list)) #DEBUG
     output_file = build_dir + prefix + "_partial.fasta"
     f = open(output_file, "w")
     call = ['cat'] + input_file_list + [" > "] + [output_file]
-    print("CALL: "+" ".join(call)) #DEBUG
     print(" ".join(call) + " > " + output_file)
     if len(input_file_list) >= 1:
         subprocess.call(call, stdout=f)
@@ -151,6 +153,14 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     print("Good samples: " + " ".join(good_samples))
     input_file_list = [build_dir + sample + ".consensus.fasta" for sample in good_samples]
     output_file = build_dir + prefix + "_good.fasta"
+    f = open(output_file, "w")
+    call = ['cat'] + input_file_list
+    print(" ".join(call) + " > " + output_file)
+    subprocess.call(call, stdout=f)
+    # concatenate poor samples
+    print("Poor samples: " + " ".join(good_samples))
+    input_file_list = [build_dir + sample + ".consensus.fasta" for sample in poor_samples]
+    output_file = build_dir + prefix + "_poor.fasta"
     f = open(output_file, "w")
     call = ['cat'] + input_file_list
     print(" ".join(call) + " > " + output_file)
