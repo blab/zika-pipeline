@@ -1,11 +1,9 @@
 #!/bin/bash -x
 set -e
 
-schema=$1
+ref=$1
 sample=$2
-
-ref=/zibra/zika-pipeline/${schema}/V1/${schema}.reference.fasta
-bed=/zibra/zika-pipeline/${schema}/V1/${schema}.scheme.bed
+amplicons=$3
 
 # Takes a $sample.fasta file full of nanopolish reads, ie
 # nanopolish extract --type 2d /data > $sample.fasta
@@ -18,12 +16,12 @@ cp -f /zibra/models/new_models.fofn .
 
 # 3) index the ref & align with bwa
 bwa index $ref
-bwa mem -xont2d $ref $sample.fasta | samtools view -bS - | samtools sort -o $sample.sorted.bam -
+bwa mem -x ont2d $ref $sample.fasta | samtools view -bS - | samtools sort -o $sample.sorted.bam -
 samtools index $sample.sorted.bam
 
 # 4) trim the alignments to the primer start sites and normalise the coverage to save time
-align_trim.py --start --normalise 100 $bed --report $sample.alignreport.txt < $sample.sorted.bam 2> $sample.alignreport.er | samtools view -bS - | samtools sort -T $sample - -o $sample.trimmed.sorted.bam
-align_trim.py --normalise 100 $bed --report $sample.alignreport.txt < $sample.sorted.bam 2> $sample.alignreport.er | samtools view -bS - | samtools sort -T $sample - -o $sample.primertrimmed.sorted.bam
+align_trim.py --start --normalise 100 $amplicons --report $sample.alignreport.txt < $sample.sorted.bam 2> $sample.alignreport.er | samtools view -bS - | samtools sort -T $sample - -o $sample.trimmed.sorted.bam
+align_trim.py --normalise 100 $amplicons --report $sample.alignreport.txt < $sample.sorted.bam 2> $sample.alignreport.er | samtools view -bS - | samtools sort -T $sample - -o $sample.primertrimmed.sorted.bam
 samtools index $sample.trimmed.sorted.bam
 samtools index $sample.primertrimmed.sorted.bam
 
