@@ -7,6 +7,8 @@
 #   5. Repeat for paired library
 #   6. Fill in <name1> and <name2> into pool1 and pool2 below
 #
+#   This can by accomplished by running depth_process.py
+#
 #   Pairs NB01,NB07
 #         NB02,NB08
 #         NB03,NB09
@@ -20,18 +22,19 @@ library(reshape)
 parser <- ArgumentParser(description='Make coverage graphs from multiplexed minION reads.')
 parser$add_argument('-i','--inputPath', type='character', help='path to directory contining multiplexed reads')
 parser$add_argument('-o','--outputPath', type='character', help='path to the output directory for .png files')
+parser$add_argument('-r','--run', type='character', nargs=6, help='run name; used for naming output files')
 
 roundUpNice <- function(x, nice=c(1,2,4,5,6,8,10)) {
   if(length(x) != 1) stop("'x' must be of length 1")
   10^floor(log10(x)) * nice[[which(x <= 10^floor(log10(x)) * nice)[[1]]]]
 }
 
-makeOverlapGraphs <- function(pool1,pool2,idir,odir) {
+makeOverlapGraphs <- function(pool1,pool2,idir,odir,runName) {
   
   path1 <- paste(idir,pool1,'/processed/chr1.coverage',sep='')
   path2 <- paste(idir,pool2,'/processed/chr1.coverage',sep='')
-  pngName <- paste(odir,'Coverage-Overlap-',pool1,'-',pool2,'.png',sep='')
-  logFile <- paste(odir,'log',pool1,'-',pool2,'.txt',sep='')
+  pngName <- paste(odir,runName,'-Coverage-Overlap.png',sep='')
+  logFile <- paste(odir,runName,'-log.txt',sep='')
   
   n1.chr1 <- read.table(path1, header=FALSE, sep="\t", na.strings="NA", dec=".", strip.white=TRUE)
   n2.chr1 <- read.table(path2, header=FALSE, sep="\t", na.strings="NA", dec=".", strip.white=TRUE)
@@ -67,13 +70,12 @@ makeOverlapGraphs <- function(pool1,pool2,idir,odir) {
   write(p40,logFile,append=TRUE)
   
   png(file=pngName,width=1200,height=600)
-  plot(x=n1.chr1$locus, y=n1.chr1$depth, type='l', xlab='locus', ylab='depth', main="Depth of Coverage - Pass reads only", ylim=c(0, graphHeight))
-  lines(x=n2.chr1$locus,y=n2.chr1$depth,col="yellowgreen")
-  abline(a=40,b=0,col="goldenrod2",lwd=0.5)
-  abline(a=20,b=0,col="tomato2",lwd=0.75)
+  plot(x=n1.chr1$locus, y=n1.chr1$depth, type='l', xlab='locus', ylab='depth', col='#781C86', main="Depth of Coverage - Pass reads only", ylim=c(0, graphHeight))
+  lines(x=n2.chr1$locus,y=n2.chr1$depth,col='#547BD3')
+  abline(a=40,b=0,col="#D3AE4E",lwd=0.5)
+  abline(a=20,b=0,col="#DF4327",lwd=0.75)
   grid()
-  legend(0,(.95 * graphHeight),c(pool1,pool2,'40 read depth','20 read depth'),lty=c(1,1,1,1),lwd=c(2.5,2.5,1,1.5),col=c('black','yellowgreen','goldenrod2','tomato2'))
-  # dev.off()
+  legend(0,(.95 * graphHeight),c('Pool A','Pool B','40 read depth','20 read depth'),lty=c(1,1,1,1),lwd=c(2.5,2.5,1,1.5),col=c('#781C86','#547BD3','#D3AE4E','#DF4327'))
   graphics.off()
   rm(list=ls())
 }
@@ -81,12 +83,16 @@ makeOverlapGraphs <- function(pool1,pool2,idir,odir) {
 main <- function () {
   args <- parser$parse_args()
   
-  makeOverlapGraphs('NB01','NB07',args$inputPath,args$outputPath)
-  makeOverlapGraphs('NB02','NB08',args$inputPath,args$outputPath)
-  makeOverlapGraphs('NB03','NB09',args$inputPath,args$outputPath)
-  makeOverlapGraphs('NB04','NB10',args$inputPath,args$outputPath)
-  makeOverlapGraphs('NB05','NB11',args$inputPath,args$outputPath)
-  makeOverlapGraphs('NB06','NB12',args$inputPath,args$outputPath)
+  i <- args$inputPath
+  o <- args$outputPath
+  r <- args$run
+
+  makeOverlapGraphs('NB01','NB07',i,o,r[1])
+  makeOverlapGraphs('NB02','NB08',i,o,r[2])
+  makeOverlapGraphs('NB03','NB09',i,o,r[3])
+  makeOverlapGraphs('NB04','NB10',i,o,r[4])
+  makeOverlapGraphs('NB05','NB11',i,o,r[5])
+  makeOverlapGraphs('NB06','NB12',i,o,r[6])
 }
 
 main()
