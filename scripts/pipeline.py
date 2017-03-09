@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse, csv, subprocess
+from Bio import SeqIO
 
 def sample_to_run_data_mapping(samples_dir):
     '''
@@ -76,9 +77,7 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         subprocess.call(call, stdout=f)
         print("")
 
-    ######## Make demultiplex.fasta ########
-
-        ######## Concatenate #########
+        ## TODO: Concatenate demultiplex and pass fasta
 
 
 
@@ -96,7 +95,7 @@ def process_sample_fastas(sm_mapping, build_dir):
         # annotate consensus
         # >ZBRD116|ZBRD116|2015-08-28|brazil|alagoas|arapiraca|minion
         fasta_header = ">" + "|".join(sm_mapping[sample])
-        fasta_header.append("|minion")
+        fasta_header += "|minion"
         replacement = r"\~^>~s~.*~" + fasta_header + "~" # ~ rather than / to avoid conflict with strain names
         input_file = build_dir + sample + ".consensus.fasta"
         output_file = "temp.fasta"
