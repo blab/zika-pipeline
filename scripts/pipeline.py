@@ -40,13 +40,16 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
     '''
     Use nanopolish to construct a single fasta for all reads from a sample
     '''
+
+    print(sr_mapping)
+
     runs = set()
     for sample in sr_mapping:
         for (run, barcode) in sr_mapping[sample]:
             runs.add(run)
     for r in runs:
         fail_folder = data_dir + run + "/basecalled_reads/fail/"
-        demultiplex_file = '/build/'+run+'_fail_demultiplex.fasta'
+        demultiplex_file = build_dir+run+'_fail_demultiplex.fasta'
         print("demultiplex_file: "+demultiplex_file)
         f = open(demultiplex_file, "w+")
         call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
@@ -56,6 +59,26 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         call = [ 'barcodes/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
         print(" ".join(call))
         subprocess.call(call)
+    # clean up the demultiplexed files.
+    for fl in os.listdir(build_dir):
+        if fl[0] == '>':
+            print("Fixing name of " + fl)
+            fname = fl[1:]
+            os.rename(build_dir + fl, build_dir + fname)
+
+    for sample in sr_mapping:
+        f = build_dir + sample + '_fail_demultiplex.fasta'
+        for (run, barcode) in sr_mapping[sample]:
+            for fl in os.listdir(build_dir):
+                if fl[0:3] == barcode:
+                    with open(f, 'w') as outfile:
+                        with open(fl) as infile:
+                            for line in infile:
+                                outfile.write(line)
+                    os.remove(fl)
+
+
+
     # Pass reads
     for sample in sr_mapping:
         print("* Extracting " + sample)
@@ -67,9 +90,11 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
             call = ['nanopolish', 'extract', '--type', '2d', input_dir]
             print(" ".join(call) + " > " + output_file)
             subprocess.call(call, stdout=f)
+
         # concatenate to single sample fasta
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             for (run, barcode) in sr_mapping[sample]]
+        input_file_list.append(build_dir + sample + '_fail_demultiplex.fasta')
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
         call = ['cat'] + input_file_list# BP
@@ -78,6 +103,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         print("")
 
         ## TODO: Concatenate demultiplex and pass fasta
+
+
 
 
 
