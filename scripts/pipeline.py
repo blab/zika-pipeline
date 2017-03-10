@@ -77,8 +77,6 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
                                 outfile.write(line)
                     os.remove(fl)
 
-
-
     # Pass reads
     for sample in sr_mapping:
         print("* Extracting " + sample)
@@ -94,6 +92,7 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         # concatenate to single sample fasta
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             for (run, barcode) in sr_mapping[sample]]
+        # add demultiplex file
         input_file_list.append(build_dir + sample + '_fail_demultiplex.fasta')
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
@@ -101,11 +100,6 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         print(" ".join(call) + " > " + output_file ) # BP
         subprocess.call(call, stdout=f)
         print("")
-
-        ## TODO: Concatenate demultiplex and pass fasta
-
-
-
 
 
 def process_sample_fastas(sm_mapping, build_dir):
@@ -199,10 +193,18 @@ if __name__=="__main__":
     parser.add_argument('--samples_dir', type = str, default = "/samples/minion/")
     parser.add_argument('--build_dir', type = str, default = "/build/")
     parser.add_argument('--prefix', type = str, default = "ZIKA")
+    parser.add_argument('--samples', type = str, nargs='*', default = None)
     params = parser.parse_args()
 
     sr_mapping = sample_to_run_data_mapping(params.samples_dir)
     sm_mapping = sample_to_metadata_mapping(params.samples_dir)
+    if params.samples:
+        for sample in params.samples:
+            if sample in sr_mapping.keys():
+                sr_mapping.pop(sample, None)
+            if sample in sm_mapping.keys():
+                sm_mapping.pop(sample, None)
+
     construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir)
     process_sample_fastas(sm_mapping, params.build_dir)
     gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix)
