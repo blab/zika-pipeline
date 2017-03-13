@@ -66,16 +66,16 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
             fname = fl[1:]
             os.rename(build_dir + fl, build_dir + fname)
 
+    import glob
     for sample in sr_mapping:
-        f = build_dir + sample + '_fail_demultiplex.fasta'
+        bc = []
+        fail_file = build_dir + sample + '_fail_demultiplex.fasta'
+        f = open(fail_file, "w+")
         for (run, barcode) in sr_mapping[sample]:
-            for fl in os.listdir(build_dir):
-                if fl[0:3] == barcode:
-                    with open(f, 'w') as outfile:
-                        with open(fl) as infile:
-                            for line in infile:
-                                outfile.write(line)
-                    os.remove(fl)
+            bc += glob.glob(build_dir + barcode + '_' + run + '_fail_demultiplex.fasta')
+        call = ['cat'] + bc
+        print(" ".join(call + ['>', fail_file]))
+        subprocess.call(call, stdout=f)
 
     # Pass reads
     for sample in sr_mapping:
@@ -93,8 +93,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             for (run, barcode) in sr_mapping[sample]]
         # add demultiplex file
-        input_file_list.append(build_dir + sr_mapping[sample][0][1] + '_' + sr_mapping[sample][0][0] + '_fail_demultiplex.fasta')
-        input_file_list.append(build_dir + sr_mapping[sample][1][1] + '_' + sr_mapping[sample][1][0] + '_fail_demultiplex.fasta')
+        failed = build_dir + sample + '_fail_demultiplex.fasta'
+        input_file_list.append(failed)
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
         call = ['cat'] + input_file_list# BP
