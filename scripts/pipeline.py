@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse, csv, subprocess
 from Bio import SeqIO
+import os
 
 def sample_to_run_data_mapping(samples_dir):
     '''
@@ -40,25 +41,24 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
     '''
     Use nanopolish to construct a single fasta for all reads from a sample
     '''
-
-    print(sr_mapping)
-
     runs = set()
     for sample in sr_mapping:
         for (run, barcode) in sr_mapping[sample]:
             runs.add(run)
     for r in runs:
-        fail_folder = data_dir + run + "/basecalled_reads/fail/"
-        demultiplex_file = build_dir+run+'_fail_demultiplex.fasta'
+        fail_folder = data_dir + r + "/basecalled_reads/fail/"
+        dmname = r + '_fail_demultiplex.fasta'
+        demultiplex_file = build_dir+dmname
         print("demultiplex_file: "+demultiplex_file)
-        f = open(demultiplex_file, "w+")
-        call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
-        print(" ".join(call))
-        subprocess.call(call,stdout=f)
-        f.close()
-        call = [ 'barcodes/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
-        print(" ".join(call))
-        subprocess.call(call)
+        if dmname not in os.listdir(build_dir):
+            f = open(demultiplex_file, "w+")
+            call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
+            print(" ".join(call))
+            subprocess.call(call,stdout=f)
+            f.close()
+            call = [ 'barcodes/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
+            print(" ".join(call))
+            subprocess.call(call)
     # clean up the demultiplexed files.
     for fl in os.listdir(build_dir):
         if fl[0] == '>':
@@ -93,7 +93,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir):
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             for (run, barcode) in sr_mapping[sample]]
         # add demultiplex file
-        input_file_list.append(build_dir + sample + '_fail_demultiplex.fasta')
+        input_file_list.append(build_dir + sr_mapping[sample][0][1] + '_' + sr_mapping[sample][0][0] + '_fail_demultiplex.fasta')
+        input_file_list.append(build_dir + sr_mapping[sample][1][1] + '_' + sr_mapping[sample][1][0] + '_fail_demultiplex.fasta')
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
         call = ['cat'] + input_file_list# BP
@@ -186,6 +187,12 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     print(" ".join(call) + " > " + output_file)
     subprocess.call(call, stdout=f)
     print("")
+
+def print_overlap(sr_mapping, build_dir):
+    return
+
+def per_base_error_rate(sr_mapping, build_dir):
+    return
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description = "process data")
