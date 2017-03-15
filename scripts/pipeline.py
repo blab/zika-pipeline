@@ -141,7 +141,6 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     good_samples = []
     poor_samples = []
     for sample in sm_mapping:
-        print("SAMPLE "+sample) #DEBUG
         consensus_file = build_dir + sample + ".consensus.fasta"
         with open(consensus_file) as f:
             lines = f.readlines()
@@ -161,17 +160,16 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     good_samples.sort()
     poor_samples.sort()
     print("Good samples: " + " ".join(good_samples))
-    # concatenate partial samples
     print("Partial samples: " + " ".join(partial_samples))
+    print("Poor samples: " + " ".join(poor_samples))
     input_file_list = [build_dir + sample + ".consensus.fasta" for sample in partial_samples]
     output_file = build_dir + prefix + "_partial.fasta"
     f = open(output_file, "w")
-    call = ['cat'] + input_file_list + [" > "] + [output_file]
+    call = ['cat'] + input_file_list
     print(" ".join(call) + " > " + output_file)
     if len(input_file_list) >= 1:
         subprocess.call(call, stdout=f)
     # concatenate good samples
-    print("Good samples: " + " ".join(good_samples))
     input_file_list = [build_dir + sample + ".consensus.fasta" for sample in good_samples]
     output_file = build_dir + prefix + "_good.fasta"
     f = open(output_file, "w")
@@ -188,8 +186,23 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     subprocess.call(call, stdout=f)
     print("")
 
-def print_overlap(sr_mapping, build_dir):
-    return
+def overlap(sr_mapping, build_dir):
+
+    # prepare sorted bam files for coverage plots
+    for sample in sr_mapping:
+        # samtools depth <name.sorted.bam> > <name.coverage>
+        bamfile = build_dir + sample + '.sorted.bam'
+        coveragefile = build_dir + prefix + '.coverage'
+        with open(coveragefile, 'w+') as f:
+            call = ['samtools', 'depth', bamfile]
+            print(" ".join(call + ['>', output_file])
+            subprocess.call(call, stdout=f)
+        print("")
+
+        chfile = build_dir + sample + '.chr1.coverage'
+        call = "awk '$1 == \"NC_012532.1\" {print $0}'" + coveragefile + " > " + chfile
+        print(call)
+        subprocess.call([call], shell=True)
 
 def per_base_error_rate(sr_mapping, build_dir):
     return
