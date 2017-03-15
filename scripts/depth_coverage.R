@@ -33,29 +33,27 @@ makeOverlapGraphs <- function(infile,odir,runName) {
   graphHeight <- roundUpNice(maxDepth * 1.1)
   graphHeight
   
-  # p20 <- 0
-  # p40 <- 0
-  # fix this
-  # shorter = min(max(n1.chr1$locus),max(n2.chr1$locus))
-  # for (i in 1:shorter) {
-  #   a = n1.chr1$depth[i]
-  #   b = n2.chr1$depth[i]
-  #   if (!is.na(a) & !is.na(b)) {
-  #     if ((a + b) >= 40) {
-  #       p20 <- p20 + (1/shorter)
-  #       p40 <- p40 + (1/shorter)
-  #     } else if ((a + b) >= 20) {
-  #       p20 <- p20 + (1/shorter)
-  #     }
-  #   }
-  # }
-  # 
-  # p20 <- round(p20,digits = 4)
-  # p40 <- round(p40,digits = 4)
-  # write('Percentage over 20x depth:',logFile,append=TRUE)
-  # write(p20,logFile,append=TRUE)
-  # write('Percentage over 40x depth:',logFile,append=TRUE)
-  # write(p40,logFile,append=TRUE)
+  p20 <- 0
+  p40 <- 0
+  shorter = max(n1.chr1$locus)
+  for (i in 1:shorter) {
+    a = n1.chr1$depth[i]
+    if (!is.na(a)) {
+      if (a >= 40) {
+        p20 <- p20 + (1/shorter)
+        p40 <- p40 + (1/shorter)
+      } else if (a >= 20) {
+        p20 <- p20 + (1/shorter)
+      }
+    }
+  }
+
+  p20 <- round(p20,digits = 4)
+  p40 <- round(p40,digits = 4)
+  write('Percentage over 20x depth:',logFile,append=TRUE)
+  write(p20,logFile,append=TRUE)
+  write('Percentage over 40x depth:',logFile,append=TRUE)
+  write(p40,logFile,append=TRUE)
   
   png(file=pngName,width=1200,height=600)
   plot(x=n1.chr1$locus, y=n1.chr1$depth, type='l', xlab='locus', ylab='depth', col='#781C86', main="Depth of Coverage - Pass reads only", ylim=c(0, graphHeight))
