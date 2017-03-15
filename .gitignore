@@ -21,3 +21,6 @@ scripts/illumina/db/*fa.*
 
 # Python compiles
 *.pyc
+
+# Tools for basecalling raw reads
+basecall/
