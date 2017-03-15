@@ -205,7 +205,22 @@ def overlap(sr_mapping, build_dir):
         subprocess.call([call], shell=True)
 
 def per_base_error_rate(sr_mapping, build_dir):
-    return
+    length = 10794.0
+    for sample in sr_mapping:
+        error = 0
+        vcf = build_dir + sample + '.vcf'
+        with open(vcf) as f:
+            lines = f.readlines()
+            if len(lines) > 1:
+                for line in lines:
+                    l = line.split('\t')
+                    alt = len(l[4])
+                    error += alt
+        outfile = data_dir + sample + '.error'
+        error = error / length
+        with open(outfile, 'w+') as f:
+            f.write('Error rate: ' + str(error))
+
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description = "process data")
@@ -228,3 +243,5 @@ if __name__=="__main__":
     construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir)
     process_sample_fastas(sm_mapping, params.build_dir)
     gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix)
+    overlap(sm_mapping, params.build_dir)
+    per_base_error_rate(sr_mapping, params.build_dir)
