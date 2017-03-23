@@ -37,7 +37,7 @@ def sample_to_metadata_mapping(samples_dir):
             sm_mapping[sample] = metadata
     return sm_mapping
 
-def construct_sample_fastas(sr_mapping, data_dir, build_dir):
+def construct_sample_fastas(sr_mapping, data_dir, build_dir, log, logfile):
     '''
     Use nanopolish to construct a single fasta for all reads from a sample
     '''
@@ -195,7 +195,7 @@ def overlap(sr_mapping, build_dir):
         coveragefile = build_dir + prefix + '.coverage'
         with open(coveragefile, 'w+') as f:
             call = ['samtools', 'depth', bamfile]
-            print(" ".join(call + ['>', output_file])
+            print(" ".join(call + ['>', output_file]))
             subprocess.call(call, stdout=f)
         print("")
 
@@ -229,6 +229,7 @@ if __name__=="__main__":
     parser.add_argument('--build_dir', type = str, default = "/build/")
     parser.add_argument('--prefix', type = str, default = "ZIKA")
     parser.add_argument('--samples', type = str, nargs='*', default = None)
+    parser.add_argument('--log', action='store_true')
     params = parser.parse_args()
 
     sr_mapping = sample_to_run_data_mapping(params.samples_dir)
@@ -240,7 +241,17 @@ if __name__=="__main__":
             if sample in sm_mapping.keys():
                 sm_mapping.pop(sample, None)
 
-    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir)
+    logfile = params.build_dir + 'log.txt'
+    # Add header to logfile
+    if params.log:
+        with open(logfile,'w+') as f:
+            f.write('Samples')
+            for sample in sr_mapping:
+                f.write(sample)
+                for (run, barcode) in sr_mapping[sample]:
+                    f.write('\t('+run+', '+barcode+')')
+
+    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, params.log, logfile)
     process_sample_fastas(sm_mapping, params.build_dir)
     gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix)
     overlap(sm_mapping, params.build_dir)
