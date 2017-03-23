@@ -96,9 +96,13 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
             input_dir = data_dir + run + "/basecalled_reads/pass/" + barcode
             output_file = build_dir + sample + "_" + run + "_" + barcode + ".fasta"
             f = open(output_file, "w")
-            call = ['nanopolish', 'extract', '--type', '2d', input_dir]
-            print(" ".join(call) + " > " + output_file)
-            subprocess.call(call, stdout=f)
+            if output_file not in os.listdir(build_dir):
+                call = ['nanopolish', 'extract', '--type', '2d', input_dir]
+                print(" ".join(call) + " > " + output_file)
+                subprocess.call(call, stdout=f)
+            else:
+                with open(logfile, 'a') as f:
+                    f.write(time.strftime('[%H:%M:%S] ' + output_file  + ' already in ' + build_dir + '\n'))
 
 
         # concatenate to single sample fasta
@@ -109,15 +113,16 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
         input_file_list.append(failed)
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
-        call = ['cat'] + input_file_list# BP
+        call = ['cat'] + input_file_list
+        # Check if any files exist to prevent freezing
         if len(input_file_list) >= 1:
-            print(" ".join(call) + " > " + output_file ) # BP
+            print(" ".join(call) + " > " + output_file )
             subprocess.call(call, stdout=f)
+            with open(logfile, 'a') as f:
+                f.write(time.strftime('[%H:%M:%S] Done writing complete fasta for ' + sample + '\n'))
         else:
             with open(logfile, 'a') as f:
                 f.write("Unable to cat, no fasta files available for " + sample)
-        with open(logfile, 'a') as f:
-            f.write(time.strftime('[%H:%M:%S] Done writing complete fasta for ' + sample + '\n'))
         print("")
 
 
@@ -204,6 +209,8 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix, logfile):
     call = ['cat'] + input_file_list
     print(" ".join(call) + " > " + output_file)
     subprocess.call(call, stdout=f)
+    with open(logfile, 'a') as f:
+        f.write(time.strftime('[%H:%M:%S] Done gathering consensus fastas\n'))
     print("")
 
 def overlap(sr_mapping, build_dir, logfile):
@@ -223,8 +230,13 @@ def overlap(sr_mapping, build_dir, logfile):
         call = "awk '$1 == \"NC_012532.1\" {print $0}'" + coveragefile + " > " + chfile
         print(call)
         subprocess.call([call], shell=True)
+        with open(logfile, 'a') as f:
+            f.write(time.strftime('[%H:%M:%S] Done drawing overlap graphs for ' + sample + '\n'))
 
 def per_base_error_rate(sr_mapping, build_dir, logfile):
+    '''
+    Calculate per-base error rates by walking through VCF files for each sample.
+    '''
     length = 10794.0
     for sample in sr_mapping:
         error = 0
@@ -240,6 +252,8 @@ def per_base_error_rate(sr_mapping, build_dir, logfile):
         error = error / length
         with open(outfile, 'w+') as f:
             f.write('Error rate: ' + str(error))
+    with open(logfile, 'a') as f:
+        f.write(time.strftime('[%H:%M:%S] Done calculating per-base error rates ' + sample + '\n'))
 
 
 if __name__=="__main__":
