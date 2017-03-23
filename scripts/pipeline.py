@@ -59,12 +59,17 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
             call = [ 'barcodes/demultiplex.py', '--barcodes', '/zibra/zika-pipeline/barcodes/barcodes.fasta', demultiplex_file]
             print(" ".join(call))
             subprocess.call(call)
+            with open(logfile, 'a') as f:
+                f.write(time.strftime('[%H:%M:%S] Done demultiplexing ' + run + '\n'))
+
     # clean up the demultiplexed files.
     for fl in os.listdir(build_dir):
         if fl[0] == '>':
             print("Fixing name of " + fl)
             fname = fl[1:]
             os.rename(build_dir + fl, build_dir + fname)
+            with open(logfile, 'a') as f:
+                f.write(time.strftime('[%H:%M:%S] Fixed name of ' + fname + '\n'))
 
     import glob
     for sample in sr_mapping:
@@ -80,6 +85,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
         else:
             with open(logfile, 'a') as f:
                 f.write("Unable to cat, no demultiplexed files for " + sample)
+        with open(logfile, 'a') as f:
+            f.write(time.strftime('[%H:%M:%S] Done writing fail fasta for ' + sample + '\n'))
 
     # Pass reads
     for sample in sr_mapping:
@@ -92,6 +99,7 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
             call = ['nanopolish', 'extract', '--type', '2d', input_dir]
             print(" ".join(call) + " > " + output_file)
             subprocess.call(call, stdout=f)
+
 
         # concatenate to single sample fasta
         input_file_list = [build_dir + sample + "_" + run + "_" + barcode + ".fasta"
@@ -108,6 +116,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
         else:
             with open(logfile, 'a') as f:
                 f.write("Unable to cat, no fasta files available for " + sample)
+        with open(logfile, 'a') as f:
+            f.write(time.strftime('[%H:%M:%S] Done writing complete fasta for ' + sample + '\n'))
         print("")
 
 
@@ -136,6 +146,8 @@ def process_sample_fastas(sm_mapping, build_dir, logfile):
         call = ['mv', output_file, input_file]
         print(" ".join(call))
         subprocess.call(call)
+        with open(logfile, 'a') as f:
+            f.write(time.strftime('[%H:%M:%S] Consensus fasta completed for ' + sample + '\n'))
         print("")
 
 def gather_consensus_fastas(sm_mapping, build_dir, prefix, logfile):
@@ -247,11 +259,10 @@ if __name__=="__main__":
     sr_mapping = sample_to_run_data_mapping(params.samples_dir)
     sm_mapping = sample_to_metadata_mapping(params.samples_dir)
     if params.samples:
-        print(params.samples)
-        for sample in params.samples:
-            if sample in sr_mapping.keys():
+        for sample in sr_mapping.keys():
+            if sample not in params.samples:
                 sr_mapping.pop(sample, None)
-            if sample in sm_mapping.keys():
+            if sample not in params.samples:
                 sm_mapping.pop(sample, None)
 
     with open(logfile,'a') as f:
