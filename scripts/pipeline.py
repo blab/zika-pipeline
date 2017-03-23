@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, csv, subprocess
+import argparse, csv, subprocess, time
 from Bio import SeqIO
 import os
 
@@ -37,7 +37,7 @@ def sample_to_metadata_mapping(samples_dir):
             sm_mapping[sample] = metadata
     return sm_mapping
 
-def construct_sample_fastas(sr_mapping, data_dir, build_dir, log, logfile):
+def construct_sample_fastas(sr_mapping, data_dir, build_dir, logfile):
     '''
     Use nanopolish to construct a single fasta for all reads from a sample
     '''
@@ -48,8 +48,8 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, log, logfile):
     for r in runs:
         fail_folder = data_dir + r + "/basecalled_reads/fail/"
         dmname = r + '_fail_demultiplex.fasta'
-        demultiplex_file = build_dir+dmname
-        print("demultiplex_file: "+demultiplex_file)
+        demultiplex_file = build_dir + dmname
+        print("Demultiplexing: "+demultiplex_file)
         if dmname not in os.listdir(build_dir):
             f = open(demultiplex_file, "w+")
             call = [ 'poretools', 'fasta', '--type', '2D', fail_folder ]
@@ -74,8 +74,12 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, log, logfile):
         for (run, barcode) in sr_mapping[sample]:
             bc += glob.glob(build_dir + barcode + '_' + run + '_fail_demultiplex.fasta')
         call = ['cat'] + bc
-        print(" ".join(call + ['>', fail_file]))
-        subprocess.call(call, stdout=f)
+        if len(bc) >= 1:
+            print(" ".join(call + ['>', fail_file]))
+            subprocess.call(call, stdout=f)
+        else:
+            with open(logfile, 'a') as f:
+                f.write("Unable to cat, no demultiplexed files for " + sample)
 
     # Pass reads
     for sample in sr_mapping:
@@ -98,12 +102,16 @@ def construct_sample_fastas(sr_mapping, data_dir, build_dir, log, logfile):
         output_file = build_dir + sample + ".fasta"
         f = open(output_file, "w")
         call = ['cat'] + input_file_list# BP
-        print(" ".join(call) + " > " + output_file ) # BP
-        subprocess.call(call, stdout=f)
+        if len(input_file_list) >= 1:
+            print(" ".join(call) + " > " + output_file ) # BP
+            subprocess.call(call, stdout=f)
+        else:
+            with open(logfile, 'a') as f:
+                f.write("Unable to cat, no fasta files available for " + sample)
         print("")
 
 
-def process_sample_fastas(sm_mapping, build_dir):
+def process_sample_fastas(sm_mapping, build_dir, logfile):
     '''
     Run fasta_to_consensus script to construct consensus files
     '''
@@ -130,7 +138,7 @@ def process_sample_fastas(sm_mapping, build_dir):
         subprocess.call(call)
         print("")
 
-def gather_consensus_fastas(sm_mapping, build_dir, prefix):
+def gather_consensus_fastas(sm_mapping, build_dir, prefix, logfile):
     '''
     Gather consensus files into genomes with 'partial' (50-80% coverage)
     and good (>80% coverage) coverage
@@ -186,7 +194,7 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix):
     subprocess.call(call, stdout=f)
     print("")
 
-def overlap(sr_mapping, build_dir):
+def overlap(sr_mapping, build_dir, logfile):
 
     # prepare sorted bam files for coverage plots
     for sample in sr_mapping:
@@ -204,7 +212,7 @@ def overlap(sr_mapping, build_dir):
         print(call)
         subprocess.call([call], shell=True)
 
-def per_base_error_rate(sr_mapping, build_dir):
+def per_base_error_rate(sr_mapping, build_dir, logfile):
     length = 10794.0
     for sample in sr_mapping:
         error = 0
@@ -229,30 +237,39 @@ if __name__=="__main__":
     parser.add_argument('--build_dir', type = str, default = "/build/")
     parser.add_argument('--prefix', type = str, default = "ZIKA")
     parser.add_argument('--samples', type = str, nargs='*', default = None)
-    parser.add_argument('--log', action='store_true')
     params = parser.parse_args()
+
+    logfile = params.build_dir + 'log.txt'
+    start_time = time.time()
+    with open(logfile,'w+') as f:
+        f.write(time.strftime('Pipeline started on %Y-%m-%d at %H:%M:%S\n'))
 
     sr_mapping = sample_to_run_data_mapping(params.samples_dir)
     sm_mapping = sample_to_metadata_mapping(params.samples_dir)
     if params.samples:
+        print(params.samples)
         for sample in params.samples:
             if sample in sr_mapping.keys():
                 sr_mapping.pop(sample, None)
             if sample in sm_mapping.keys():
                 sm_mapping.pop(sample, None)
 
-    logfile = params.build_dir + 'log.txt'
-    # Add header to logfile
-    if params.log:
-        with open(logfile,'w+') as f:
-            f.write('Samples')
-            for sample in sr_mapping:
-                f.write(sample)
-                for (run, barcode) in sr_mapping[sample]:
-                    f.write('\t('+run+', '+barcode+')')
+    with open(logfile,'a') as f:
+        f.write('Samples:\n')
+        for sample in sr_mapping:
+            f.write(sample+'\n')
+            for (run, barcode) in sr_mapping[sample]:
+                f.write('\t('+run+', '+barcode+')\n')
 
-    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, params.log, logfile)
-    process_sample_fastas(sm_mapping, params.build_dir)
-    gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix)
-    overlap(sm_mapping, params.build_dir)
-    per_base_error_rate(sr_mapping, params.build_dir)
+    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, logfile)
+    process_sample_fastas(sm_mapping, params.build_dir, logfile)
+    gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix, logfile)
+    overlap(sm_mapping, params.build_dir, logfile)
+    per_base_error_rate(sr_mapping, params.build_dir, logfile)
+
+    time_elapsed = time.time() - start_time
+    m, s = divmod(time_elapsed, 60)
+    h, m = divmod(m, 60)
+    with open(logfile,'a') as f:
+        f.write(time.strftime('Pipeline completed on %Y-%m-%d at %H:%M:%S\n'))
+        f.write('Total runtime: %d:%02d:%02d' % (h, m, s))
