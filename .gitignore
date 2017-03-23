@@ -24,3 +24,6 @@ scripts/illumina/db/*fa.*
 
 # Tools for basecalling raw reads
 basecall/
+
+# R History
+.Rhistory
