@@ -21,7 +21,7 @@ roundUpNice <- function(x, nice=c(1,2,4,5,6,8,10)) {
 
 makeOverlapGraphs <- function(infile,odir,runName) {
   
-  path1 <- paste('/build/',infile)
+  path1 <- paste(infile)
   pngName <- paste(odir,runName,'-Coverage-Overlap.png',sep='')
   logFile <- paste(odir,runName,'-log.txt',sep='')
   
