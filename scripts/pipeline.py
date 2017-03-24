@@ -219,17 +219,25 @@ def overlap(sr_mapping, build_dir, logfile):
     for sample in sr_mapping:
         # samtools depth <name.sorted.bam> > <name.coverage>
         bamfile = build_dir + sample + '.sorted.bam'
-        coveragefile = build_dir + prefix + '.coverage'
+        coveragefile = build_dir + sample + '.coverage'
         with open(coveragefile, 'w+') as f:
             call = ['samtools', 'depth', bamfile]
-            print(" ".join(call + ['>', output_file]))
+            print(" ".join(call + ['>', coveragefile]))
             subprocess.call(call, stdout=f)
-        print("")
 
         chfile = build_dir + sample + '.chr1.coverage'
-        call = "awk '$1 == \"NC_012532.1\" {print $0}'" + coveragefile + " > " + chfile
+        with open(coveragefile, 'r') as f:
+            f.readline()
+            line = f.readline()
+            l = line.split('\t')
+            chromosome_name = l[0]
+        call = "awk '$1 == \"" + chromosome_name + "\" {print $0}' " + coveragefile + " > " + chfile
         print(call)
         subprocess.call([call], shell=True)
+        call = "Rscript scripts/depth_coverage.R -i " + chfile + " -o " + build_dir + " -n " + sample
+        print(call)
+        subprocess.call([call], shell=True)
+        print("")
         with open(logfile, 'a') as f:
             f.write(time.strftime('[%H:%M:%S] Done drawing overlap graphs for ' + sample + '\n'))
 
@@ -241,17 +249,18 @@ def per_base_error_rate(sr_mapping, build_dir, logfile):
     for sample in sr_mapping:
         error = 0
         vcf = build_dir + sample + '.vcf'
-        with open(vcf) as f:
-            lines = f.readlines()
-            if len(lines) > 1:
-                for line in lines:
-                    l = line.split('\t')
-                    alt = len(l[4])
-                    error += alt
-        outfile = data_dir + sample + '.error'
-        error = error / length
-        with open(outfile, 'w+') as f:
-            f.write('Error rate: ' + str(error))
+        if vcf in os.listdir(build_dir):
+            with open(vcf) as f:
+                lines = f.readlines()
+                if len(lines) > 1:
+                    for line in lines:
+                        l = line.split('\t')
+                        alt = len(l[4])
+                        error += alt
+            outfile = build_dir + sample + '.error'
+            error = error / length
+            with open(outfile, 'w+') as f:
+                f.write('Error rate: ' + str(error))
     with open(logfile, 'a') as f:
         f.write(time.strftime('[%H:%M:%S] Done calculating per-base error rates ' + sample + '\n'))
 
@@ -286,9 +295,9 @@ if __name__=="__main__":
             for (run, barcode) in sr_mapping[sample]:
                 f.write('\t('+run+', '+barcode+')\n')
 
-    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, logfile)
-    process_sample_fastas(sm_mapping, params.build_dir, logfile)
-    gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix, logfile)
+    # construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, logfile)
+    # process_sample_fastas(sm_mapping, params.build_dir, logfile)
+    # gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix, logfile)
     overlap(sm_mapping, params.build_dir, logfile)
     per_base_error_rate(sr_mapping, params.build_dir, logfile)
 
