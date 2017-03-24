@@ -214,7 +214,6 @@ def gather_consensus_fastas(sm_mapping, build_dir, prefix, logfile):
     print("")
 
 def overlap(sr_mapping, build_dir, logfile):
-
     # prepare sorted bam files for coverage plots
     for sample in sr_mapping:
         # samtools depth <name.sorted.bam> > <name.coverage>
@@ -295,9 +294,9 @@ if __name__=="__main__":
             for (run, barcode) in sr_mapping[sample]:
                 f.write('\t('+run+', '+barcode+')\n')
 
-    # construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, logfile)
-    # process_sample_fastas(sm_mapping, params.build_dir, logfile)
-    # gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix, logfile)
+    construct_sample_fastas(sr_mapping, params.data_dir, params.build_dir, logfile)
+    process_sample_fastas(sm_mapping, params.build_dir, logfile)
+    gather_consensus_fastas(sm_mapping, params.build_dir, params.prefix, logfile)
     overlap(sm_mapping, params.build_dir, logfile)
     per_base_error_rate(sr_mapping, params.build_dir, logfile)
 
